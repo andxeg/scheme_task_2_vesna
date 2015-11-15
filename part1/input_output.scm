@@ -123,3 +123,6 @@
    )
    (loop lst "")
 )
+
+(define (input-output)
+  (doctor-print (doctor-read)))
