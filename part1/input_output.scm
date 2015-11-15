@@ -31,6 +31,12 @@
             (exist? word (cdr lst))
        )))
 
+(define (reverse2 lst)
+  (define (loop lst res)
+    (if (null? lst) res
+        (loop (cdr lst) (cons (car lst) res))))
+  (loop lst '()))
+
 ;'.' ',' ';' in quota presentation -> |,| |.| |;|
 (define Separators '(#\, #\- #\: #\;))
 (define Terminators  '(#\. #\! #\?))
@@ -68,13 +74,13 @@
 
 (define (convert-letters-lst-to-internal-presentation lst)
   (define (loop lst word seq res)
-     (cond ((null? lst) (append res (list (append seq (create-word word)))))
+     (cond ((null? lst) (cons (append seq (create-word word)) res))
           ((isalpha? (car lst)) (loop (cdr lst) (cons (car lst) word) seq res))
           ((isdigit? (car lst)) (loop (cdr lst) (cons (car lst) word) seq res))
           ((isseparator? (car lst)) (loop (cdr lst) '() (append seq (create-word word) (list (char->sym (car lst)))) res))
-          ((isterminators? (car lst)) (loop (cdr lst) '() '() (append res (list (append seq (create-word word) (list (char->sym (car lst))))))))
+          ((isterminators? (car lst)) (loop (cdr lst) '() '() (cons (append seq (create-word word) (list (char->sym (car lst)))) res)))
           ((isspace? (car lst)) (loop (cdr lst) '() (append seq (create-word word)) res))
-          (else (loop (cdr lst) word res))
+          (else (loop (cdr lst) word seq res))
      )
   )
   (loop lst '() '() '())
@@ -83,7 +89,37 @@
 (define (doctor-read)
   (begin
     (let ((input (read-line)))
-      (convert-letters-lst-to-internal-presentation (string-to-letters-lst input))
+      (reverse2 (convert-letters-lst-to-internal-presentation (string-to-letters-lst input)))
       )))
 
-;(define (doctor-print))
+
+
+(define Punc (list "." "," ":" ";" "." "!" "?"))
+
+(define (punctuation? str)
+  (if (> (string-length str) 1) #f
+      (exist? str Punc)))
+
+(define (doctor-string lst)
+  (define (loop lst res)
+    (cond ((null? lst) res)
+          ;((null? (cdr lst)) (loop (cdr lst) (string-append res " " (symbol->string (car lst)))))
+          ;((punctuation? (symbol->string (cadr lst))) (loop (cdr lst) (string-append res (symbol->string (car lst)))))
+          ((punctuation? (symbol->string (car lst))) (loop (cdr lst) (string-append res (symbol->string (car lst)))))
+          (else (loop (cdr lst) (string-append res  " " (symbol->string (car lst)))))
+    )          
+  )
+  (if (null? lst) ""
+      (loop (cdr lst) (symbol->string (car lst)))
+  )
+)
+
+(define (doctor-print lst)
+  (define (loop lst res)
+    (cond ((null? lst) res)
+          ((null? (cdr lst)) (loop (cdr lst) (string-append res (doctor-string (car lst)))))
+          (else (loop (cdr lst) (string-append res (doctor-string (car lst)) " ")))
+    )
+   )
+   (loop lst "")
+)
