@@ -39,7 +39,7 @@
   (loop lst '()))
 
 ;'.' ',' ';' in quota presentation -> |,| |.| |;|
-(define Separators '(#\, #\- #\: #\;))
+(define Separators '(#\, #\- #\: #\; #\'))
 (define Terminators  '(#\. #\! #\?))
 (define EnglishLetter '(#\a #\b #\c #\d #\e #\f #\g #\h #\i #\j #\k #\l #\m #\n #\o #\p #\q #\r #\s #\t #\u #\v #\w #\x #\y #\z
                         #\A #\B #\C #\D #\E #\F #\G #\H #\I #\J #\K #\L #\M #\N #\O #\P #\Q #\R #\S #\T #\U #\V #\W #\X #\Y #\Z))
@@ -136,18 +136,25 @@
 
 
 (define Punc (list "." "," ":" ";" "." "!" "?"))
+(define WithoutSpace (list "'"))
 
 (define (punctuation? str)
   (if (> (string-length str) 1) #f
       (exist? str Punc)))
+
+(define (withoutspace? str)
+    (if (> (string-length str) 1) #f
+      (exist? str WithoutSpace)))
 
 (define (doctor-string lst)
   (define (loop lst res)
     (cond ((null? lst) res)
           ;((null? (cdr lst)) (loop (cdr lst) (string-append res " " (symbol->string (car lst)))))
           ;((punctuation? (symbol->string (cadr lst))) (loop (cdr lst) (string-append res (symbol->string (car lst)))))
-          ((punctuation? (symbol->string (car lst))) (loop (cdr lst) (string-append res (symbol->string (car lst)))))
-          (else (loop (cdr lst) (string-append res  " " (symbol->string (car lst)))))
+          ((or (punctuation? (symbol->string (car lst))) (withoutspace? (symbol->string (car lst)))) (loop (cdr lst) (string-append res (symbol->string (car lst)))))
+          (else
+           (if (withoutspace? (string (string-ref res (- (string-length res) 1))))   (loop (cdr lst) (string-append res (symbol->string (car lst))))
+               (loop (cdr lst) (string-append res  " " (symbol->string (car lst))))))
     )          
   )
   (if (null? lst) ""
