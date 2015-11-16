@@ -372,13 +372,8 @@
 
       ;New version - with predicates
       (begin
-        (print (car user-response))
-        (println (doctor-print (list (car user-response))))
-        (let ((result (list (pick-random (execute-strategy pred-F (car user-response)))) ))
-          (begin (print result) result)
-          )
-        
-      )
+        (let ((response (pick-random user-response))) 
+          (list (pick-random (execute-strategy pred-F response)))))
     )
 
     (define (unique-push element vector)
