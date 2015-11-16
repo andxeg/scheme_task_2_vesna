@@ -64,6 +64,12 @@
 (define (char->sym char)
   (string->symbol (string char)))
 
+(define (last-elem lst)
+  (if (null? (cdr lst)) (car lst) (last-elem (cdr lst))))
+
+(define (first-is-term? lst)
+  (if (null? lst) #t
+      (exist? (car lst) Terminators)))
 
 ;(char-alphabetic? char) <-- return true if letter (Unicode)
 ;(char-numeric? char) <-- retunr true if digit (Unicode)
@@ -80,7 +86,12 @@
           ((isalpha? (car lst)) (loop (cdr lst) (cons (car lst) word) seq res))
           ((isdigit? (car lst)) (loop (cdr lst) (cons (car lst) word) seq res))
           ((isseparator? (car lst)) (loop (cdr lst) '() (append seq (create-word word) (list (char->sym (car lst)))) res))
-          ((isterminators? (car lst)) (loop (cdr lst) '() '() (cons (append seq (create-word word) (list (char->sym (car lst)))) res)))
+
+          ;если последний символ в предложении является терминальным, то не формируем новое предложение, просто склеиваем символ с текущим
+          ((and (isterminators? (car lst)) (first-is-term? (cdr lst))) (loop (cdr lst) '() (append seq (create-word word) (list (char->sym (car lst)))) res ))
+          ((and (isterminators? (car lst)) (not (first-is-term? (cdr lst)))) (loop (cdr lst) '() '() (cons (append seq (create-word word) (list (char->sym (car lst)))) res)))
+
+          ;((isterminators? (car lst)) (loop (cdr lst) '() '() (cons (append seq (create-word word) (list (char->sym (car lst)))) res)))
           ((isspace? (car lst)) (loop (cdr lst) '() (append seq (create-word word)) res))
           (else (loop (cdr lst) word seq res))
      )
