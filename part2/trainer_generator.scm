@@ -192,3 +192,7 @@
   (loop lst-of-lst '())
 )
 
+(define (create-graph filename)
+  
+)
+
