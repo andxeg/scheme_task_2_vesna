@@ -128,6 +128,9 @@
       (reverse2 (convert-letters-lst-to-internal-presentation (string-to-letters-lst input)))
       )))
 
+(define (doctor-read-from-string str)
+  (reverse2 (convert-letters-lst-to-internal-presentation (string-to-letters-lst str))))
+
 
 
 (define Punc (list "." "," ":" ";" "." "!" "?"))
@@ -230,9 +233,88 @@
   (loop text (make-hash) '|.|)
 )
 
-(define (trainer)
+;=============================train-from-all======================================
+(define (train-from-stdin)
+  (create-graph (convert-to-lst (doctor-read)))
+)
+
+;text <-> result from doctor-read function, i.e. list of sequences(list of list)
+(define (train-from-text text)
+  (create-graph (convert-to-lst text))
+)
+
+;Read file line by line
+(define (read-file filename)
+  (define (loop file res)
+    (let ((str (read-line file)))
+        (if (eof-object? str) res
+            (loop file (string-append res str "\n"))
+        )
+    )
+  )
+    (loop (open-input-file filename) "")
+)
+
+;MAIN
+;Read file and create graph
+(define (train-from-file inputfile)
+  (train-from-text (doctor-read-from-string (read-file inputfile))))
+
+;MAIN
+;if file - output is already exist then -> raise exception
+(define (save-graph graph filename)
   (begin
-    (create-graph (convert-to-lst (doctor-read)))
+    (define out (open-output-file filename))
+    (print graph out)
+    (close-output-port out)
   )
 )
 
+;MAIN
+(define (read-graph filename)
+  (begin
+    (define in (open-input-file filename))
+    (define graph (read in))
+    (close-input-port in)
+    graph
+  )
+)
+
+;MAIN
+;(define (merge-graphs graph1 graph2)
+  
+;)
+
+;MAIN
+;Read file - inputfile, create graph and save it into outputfile
+(define (train inputfile outputfile)
+  (save-graph (train-from-file inputfile) outputfile)
+)
+
+
+;=================================GENERATOR=======================================
+;Должен быть встроен в "Доктор"
+;Считывание из файла см. (read-graph filename)
+(define (generator-direct-method word)
+  
+)
+
+;(define (generator-hybrid-method word)
+;)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
