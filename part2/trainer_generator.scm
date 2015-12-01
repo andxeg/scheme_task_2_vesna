@@ -230,7 +230,8 @@
           (else (loop (cdr text) (add-new-word hash-table prev (car text) (cadr text)) (car text)))
     )
   )
-  (loop text (make-hash) '|.|)
+  ;Предполагаем, что в начале каждого текста стоит точка. Нужно добавить ее в словарь. Для этой начальной точки prev будет тоже точкой
+  (add-new-word (loop text (make-hash) '|.|) '|.| '|.| (car text))
 )
 
 ;=============================train-from-all======================================
@@ -292,29 +293,66 @@
 )
 
 
+;=================================================================================
+(define (pick-random lst)
+  ( cond ((null? lst) '())
+         ( else (list-ref lst (random (length lst))))
+  )
+)
 ;=================================GENERATOR=======================================
-;Должен быть встроен в "Доктор"
+;Генератор должен быть встроен в "Доктор"
 ;Считывание из файла см. (read-graph filename)
-(define (generator-direct-method word)
-  
+(define PHRASE_LENGTH_LIMIT 50)
+
+(define (find-word-with-weight hash weight)
+  (define (loop keys)
+   (cond ((null? keys) '|.|)
+         ((=(hash-ref hash (car keys)) weight) (car keys))
+         (else (loop (cdr keys)))
+    )
+  )
+  (loop (hash-keys hash))
+)
+
+;Так как мы начинаем с точки и сами генерируем фразу, следовательно, слово в графе
+;всегда существует, и проверять наличие ключа не нужно
+(define (take-next-word graph word)
+  (begin (define next-words (cadr (hash-ref graph word)))
+         (define max-weight (apply max (hash-values next-words)))
+         (find-word-with-weight next-words max-weight)
+  )
+)
+
+(define (end? word)
+  (if (=(string-length (symbol->string word)) 1) (isterminators? (string-ref (symbol->string word) 0))
+      #f
+  )
+)
+
+(define (phrase-complete? next-word phrase)
+  (or (end? next-word) (>= (length phrase) PHRASE_LENGTH_LIMIT))
+)
+
+
+(define (generator-direct-method filename)
+  (define (result-phrase ph last-word)
+    (if (end? last-word) (reverse2 (cons last-word ph))
+        (reverse2 (cons '|.| (cons last-word ph)) )
+    )
+  )
+
+  (begin
+    (define graph (read-graph filename))
+    (define (loop prev-word res)
+      (let ((next-word (take-next-word graph prev-word)))
+        (if (phrase-complete? next-word res) (result-phrase res next-word)
+            (loop next-word (cons next-word res))
+         )
+      )
+    )  
+    (loop '|.| '())
+  )
 )
 
 ;(define (generator-hybrid-method word)
-;)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-         
+;)     
