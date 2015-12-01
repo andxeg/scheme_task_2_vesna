@@ -171,11 +171,13 @@
   (doctor-print (doctor-read)))
 
 ;===================================TRAINER=======================================
+;============================get-text-from-lst-of-lst=============================
 (define (concate lst1 lst2)
   (define (loop lst1 lst2 res)
     (cond ((not (null? lst1)) (loop (cdr lst1) lst2 (cons (car lst1) res)))
           ((null? lst2) res)
           (else (loop '() (cdr lst2) (cons (car lst2) res)))
+          ;alternative variant
           ;((not (null? lst2)) (loop '() (cdr lst2) (cons (car lst2) res)))
           ;(else res)
     )
@@ -192,7 +194,45 @@
   (loop lst-of-lst '())
 )
 
-(define (create-graph filename)
-  
+;=================================create-graph====================================
+(define (add-elem-to-hash hash elem)
+  (if (hash-has-key? hash elem)
+      (begin (hash-set! hash elem (+ (hash-ref hash elem) 1)) hash)
+      (begin (hash-set! hash elem 1) hash)
+  )
+)
+
+(define (add-new-word hash-table prev curr next)
+  (if (hash-has-key? hash-table curr)
+      (let ((lst (hash-ref hash-table curr)))
+        (begin
+          (add-elem-to-hash (car lst) prev)
+          (add-elem-to-hash (cadr lst) next)
+          hash-table
+        )
+      )
+      (begin
+        (hash-set! hash-table curr (list (make-hash) (make-hash)))
+        (hash-set! (car (hash-ref hash-table curr)) prev 1)
+        (hash-set! (cadr (hash-ref hash-table curr)) next 1)
+        hash-table
+      )
+  )
+)
+ 
+(define (create-graph text)
+  (define (loop text hash-table prev)
+    (cond ((= (length text) 1) (add-new-word hash-table prev (car text) '|.|))
+          ;((= (length text) 2)   (add-new-word hash-table prev (car text) (cadr text)))
+          (else (loop (cdr text) (add-new-word hash-table prev (car text) (cadr text)) (car text)))
+    )
+  )
+  (loop text (make-hash) '|.|)
+)
+
+(define (trainer)
+  (begin
+    (create-graph (convert-to-lst (doctor-read)))
+  )
 )
 
