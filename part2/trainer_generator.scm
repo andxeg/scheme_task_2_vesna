@@ -338,9 +338,8 @@
   (or (end? next-word) (>= (length phrase) PHRASE_LENGTH_LIMIT))
 )
 
-;='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='=
-;GENERATOR_MAIN_METHOD
-(define (generator-direct-method filename)
+;GENERATOR_DIRECT_METHOD
+(define (generator-direct-method filename init-word)
   (define (result-phrase ph last-word)
     (if (end? last-word) (reverse2 (cons last-word ph))
         (reverse2 (cons '|.| (cons last-word ph)) )
@@ -355,10 +354,12 @@
         )
       )
     )  
-    (loop '|.| '())
+    ;(loop '|.| '())
+    (loop init-word '())
   )
 )
-;=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=
+
+;=================================================================================
 (define (get-terminators-from-graph graph)
   (define (loop terminators res)
     (if (null? terminators) res
@@ -383,7 +384,8 @@
   )
 )
 
-(define (generator-reverse-method filename)
+;GENERATOR_REVERSE_METHOD
+(define (generator-reverse-method filename init-word)
   (define (result-ph ph last-word)
     (if (end? last-word) ph
         (cons last-word ph)
@@ -398,11 +400,13 @@
         )
       )
     )
-    (define last-word (pick-random (get-terminators-from-graph graph)))
-    (loop  last-word (list last-word))
+    ;(define last-word (pick-random (get-terminators-from-graph graph)))
+    ;(loop  last-word (list last-word))
+    (loop  init-word '())
   )
 )
 
-;(define (generator-hybrid-method word)
-;)
-
+;GENERATOR_HYBRID_METHOD
+(define (generator-hybrid-method filename word)
+  (append (generator-reverse-method filename word) (cons word (generator-direct-method filename word)))
+)

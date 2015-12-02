@@ -128,6 +128,9 @@
       (reverse2 (convert-letters-lst-to-internal-presentation (string-to-letters-lst input)))
       )))
 
+(define (doctor-read-from-string str)
+  (reverse2 (convert-letters-lst-to-internal-presentation (string-to-letters-lst str))))
+
 
 
 (define Punc (list "." "," ":" ";" "." "!" "?"))
@@ -169,6 +172,242 @@
 
 (define (input-output)
   (doctor-print (doctor-read)))
+
+;===================================TRAINER=======================================
+;============================get-text-from-lst-of-lst=============================
+(define (concate lst1 lst2)
+  (define (loop lst1 lst2 res)
+    (cond ((not (null? lst1)) (loop (cdr lst1) lst2 (cons (car lst1) res)))
+          ((null? lst2) res)
+          (else (loop '() (cdr lst2) (cons (car lst2) res)))
+          ;alternative variant
+          ;((not (null? lst2)) (loop '() (cdr lst2) (cons (car lst2) res)))
+          ;(else res)
+    )
+  )
+  (reverse2 (loop lst1 lst2 '()))
+)
+
+(define (convert-to-lst lst-of-lst)
+    (define (loop lst-of-lst res)
+      (if (null? lst-of-lst) res
+            (loop (cdr lst-of-lst) (concate res (car lst-of-lst)))
+      )
+    )
+  (loop lst-of-lst '())
+)
+
+;=================================create-graph====================================
+(define (add-elem-to-hash hash elem)
+  (if (hash-has-key? hash elem)
+      (begin (hash-set! hash elem (+ (hash-ref hash elem) 1)) hash)
+      (begin (hash-set! hash elem 1) hash)
+  )
+)
+
+(define (add-new-word hash-table prev curr next)
+  (if (hash-has-key? hash-table curr)
+      (let ((lst (hash-ref hash-table curr)))
+        (begin
+          (add-elem-to-hash (car lst) prev)
+          (add-elem-to-hash (cadr lst) next)
+          hash-table
+        )
+      )
+      (begin
+        (hash-set! hash-table curr (list (make-hash) (make-hash)))
+        (hash-set! (car (hash-ref hash-table curr)) prev 1)
+        (hash-set! (cadr (hash-ref hash-table curr)) next 1)
+        hash-table
+      )
+  )
+)
+ 
+(define (create-graph text)
+  (define (loop text hash-table prev)
+    (cond ((= (length text) 1) (add-new-word hash-table prev (car text) '|.|))
+          ;((= (length text) 2)   (add-new-word hash-table prev (car text) (cadr text)))
+          (else (loop (cdr text) (add-new-word hash-table prev (car text) (cadr text)) (car text)))
+    )
+  )
+  ;Предполагаем, что в начале каждого текста стоит точка. Нужно добавить ее в словарь. Для этой начальной точки prev будет тоже точкой
+  (add-new-word (loop text (make-hash) '|.|) '|.| '|.| (car text))
+)
+
+;=============================train-from-all======================================
+(define (train-from-stdin)
+  (create-graph (convert-to-lst (doctor-read)))
+)
+
+;text <-> result from doctor-read function, i.e. list of sequences(list of list)
+(define (train-from-text text)
+  (create-graph (convert-to-lst text))
+)
+
+;Read file line by line
+(define (read-file filename)
+  (define (loop file res)
+    (let ((str (read-line file)))
+        (if (eof-object? str) res
+            (loop file (string-append res str "\n"))
+        )
+    )
+  )
+    (loop (open-input-file filename) "")
+)
+
+;MAIN
+;Read file and create graph
+(define (train-from-file inputfile)
+  (train-from-text (doctor-read-from-string (read-file inputfile))))
+
+;MAIN
+;if file - output is already exist then -> raise exception
+(define (save-graph graph filename)
+  (begin
+    (define out (open-output-file filename))
+    (print graph out)
+    (close-output-port out)
+  )
+)
+
+;MAIN
+(define (read-graph filename)
+  (begin
+    (define in (open-input-file filename))
+    (define graph (read in))
+    (close-input-port in)
+    graph
+  )
+)
+
+;MAIN
+;(define (merge-graphs graph1 graph2)
+  
+;)
+
+;MAIN
+;Read file - inputfile, create graph and save it into outputfile
+(define (train inputfile outputfile)
+  (save-graph (train-from-file inputfile) outputfile)
+)
+
+
+;=================================================================================
+(define (pick-random lst)
+  ( cond ((null? lst) '())
+         ( else (list-ref lst (random (length lst))))
+  )
+)
+;=================================GENERATOR=======================================
+;TODO: Контроль регистра букв нужно сделать
+;Генератор должен быть встроен в "Доктор"
+;Считывание из файла см. (read-graph filename)
+(define PHRASE_LENGTH_LIMIT 50)
+
+(define (find-word-with-weight hash weight)
+  (define (loop keys)
+   (cond ((null? keys) '|.|)
+         ((=(hash-ref hash (car keys)) weight) (car keys))
+         (else (loop (cdr keys)))
+    )
+  )
+  (loop (hash-keys hash))
+)
+
+;Так как мы начинаем с точки и сами генерируем фразу, следовательно, слово word в графе
+;всегда существует, и проверять его наличие не нужно
+(define (take-next-word graph word)
+  (begin (define next-words (cadr (hash-ref graph word)))
+         (define max-weight (apply max (hash-values next-words)))
+         (if (<= (random 20) 5)
+           (find-word-with-weight next-words max-weight)
+           (pick-random (hash-keys next-words))
+         )
+  )
+)
+
+;CHECK_WORD is terminator or not
+(define (end? word)
+  (if (=(string-length (symbol->string word)) 1) (isterminators? (string-ref (symbol->string word) 0))
+      #f
+  )
+)
+
+(define (phrase-complete? next-word phrase)
+  (or (end? next-word) (>= (length phrase) PHRASE_LENGTH_LIMIT))
+)
+
+;GENERATOR_DIRECT_METHOD
+(define (generator-direct-method init-word graph)
+  (define (result-phrase ph last-word)
+    (if (end? last-word) (reverse2 (cons last-word ph))
+        (reverse2 (cons '|.| (cons last-word ph)) )
+    )
+  )
+  (begin
+    (define (loop prev-word res)
+      (let ((next-word (take-next-word graph prev-word)))
+        (if (phrase-complete? next-word res) (result-phrase res next-word)
+            (loop next-word (cons next-word res))
+        )
+      )
+    )  
+    ;(loop '|.| '())
+    (loop init-word '())
+  )
+)
+
+;=================================================================================
+(define (get-terminators-from-graph graph)
+  (define (loop terminators res)
+    (if (null? terminators) res
+        (loop (cdr terminators)
+              (if (hash-has-key? graph (char->sym (car terminators)))
+                  (cons (char->sym (car terminators)) res)
+                  res
+              )
+        )
+    )
+  )
+  (loop Terminators '())
+)
+
+(define (take-prev-word graph word)
+  (begin (define prev-words (car (hash-ref graph word)))
+         (define max-weight (apply max (hash-values prev-words)))
+         (if (<= (random 20) 5)
+             (find-word-with-weight prev-words max-weight)
+             (pick-random (hash-keys prev-words))
+         )
+  )
+)
+
+;GENERATOR_REVERSE_METHOD
+(define (generator-reverse-method init-word graph)
+  (define (result-ph ph last-word)
+    (if (end? last-word) ph
+        (cons last-word ph)
+    )
+  )
+  (begin
+    (define (loop next-word res)
+      (let ((prev-word (take-prev-word graph next-word)))
+        (if (phrase-complete? prev-word res) (result-ph res prev-word)
+            (loop prev-word (cons prev-word res))
+        )
+      )
+    )
+    ;(define last-word (pick-random (get-terminators-from-graph graph)))
+    ;(loop  last-word (list last-word))
+    (loop  init-word '())
+  )
+)
+
+;GENERATOR_HYBRID_METHOD
+(define (generator-hybrid-method word graph)
+  (append (generator-reverse-method word graph) (cons word (generator-direct-method word graph)))
+)
 ;===================================DOCTOR======================================
 
 (define (visit-doctor)
@@ -314,6 +553,8 @@
 
       ;Все функции, реализующие различные стратегии ответа должны иметь функции обертки, которые имеют один входной параметр user-response
       ;Задание №5. 1. Обертка для check-key-words
+      (define INPUT_FOR_GENERATOR "/home/andrew/Dropbox/7SEMESTR/FUNC_PROG/Task_2_Vesna/part2/2.txt")
+      
       (define (keywords-strategy client-response)
         (check-key-words client-response KEYWORDS-LIST)
       )
@@ -334,6 +575,21 @@
       (define (answer-change-pronoun client-response)
         (list
          (append (qualifier) (change-person '((i you) (I you) (me you) (am are) (my your) (you i) (You I) (are am) (your my)) client-response))
+        )
+      )
+
+      ;Если все слова длины 1, следовательно, вернется точка
+      (define (max-word lst)
+        (foldr (lambda (a b) (if (> (string-length (symbol->string b)) (string-length(symbol->string a)) ) b a )) '|.| lst )
+      )
+      (define (generate-phrase client-response)
+        (begin
+          (define word (max-word client-response))
+          (define graph (read-graph INPUT_FOR_GENERATOR))
+          (if (hash-has-key? graph word)
+              (generator-hybrid-method word graph)
+              (generator-hybrid-method (pick-random (hash-keys graph)) graph)
+          )
         )
       )
 
@@ -367,7 +623,12 @@
       ;New version - with predicates
       (begin
         (let ((response (pick-random user-response))) 
-          (list (pick-random (execute-strategy pred-F response)))))
+          (if (< (random 100) 20)
+              (list (pick-random (execute-strategy pred-F response)))
+              (list (generate-phrase response))
+          )
+        )
+      )
     )
 
     (define (unique-push element vector)
@@ -426,12 +687,6 @@
   (cond ((null? replacement-pairs) word)
         ((equal? (caar replacement-pairs) word) (cadar replacement-pairs))
         (else (replace (cdr replacement-pairs) word ) )
-  )
-)
-
-(define (pick-random lst)
-  ( cond ((null? lst) '())
-         ( else (list-ref lst (random (length lst))))
   )
 )
 

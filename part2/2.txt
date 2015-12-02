@@ -1,0 +1,1 @@
+#hash((|.| . (#hash((|.| . 1)) #hash((Hello . 1)))) (! . (#hash((friend . 1)) #hash((|.| . 1)))) (friend . (#hash((dear . 1)) #hash((! . 1)))) (dear . (#hash((my . 1)) #hash((friend . 1)))) (world . (#hash((Hello . 1)) #hash((|,| . 1)))) (|,| . (#hash((world . 1)) #hash((my . 1)))) (Hello . (#hash((|.| . 1)) #hash((world . 1)))) (my . (#hash((|,| . 1)) #hash((dear . 1)))))
