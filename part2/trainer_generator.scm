@@ -300,6 +300,7 @@
   )
 )
 ;=================================GENERATOR=======================================
+;TODO: Контроль регистра букв нужно сделать
 ;Генератор должен быть встроен в "Доктор"
 ;Считывание из файла см. (read-graph filename)
 (define PHRASE_LENGTH_LIMIT 50)
@@ -314,15 +315,19 @@
   (loop (hash-keys hash))
 )
 
-;Так как мы начинаем с точки и сами генерируем фразу, следовательно, слово в графе
-;всегда существует, и проверять наличие ключа не нужно
+;Так как мы начинаем с точки и сами генерируем фразу, следовательно, слово word в графе
+;всегда существует, и проверять его наличие не нужно
 (define (take-next-word graph word)
   (begin (define next-words (cadr (hash-ref graph word)))
          (define max-weight (apply max (hash-values next-words)))
-         (find-word-with-weight next-words max-weight)
+         (if (<= (random 20) 5)
+           (find-word-with-weight next-words max-weight)
+           (pick-random (hash-keys next-words))
+         )
   )
 )
 
+;CHECK_WORD is terminator or not
 (define (end? word)
   (if (=(string-length (symbol->string word)) 1) (isterminators? (string-ref (symbol->string word) 0))
       #f
@@ -333,26 +338,71 @@
   (or (end? next-word) (>= (length phrase) PHRASE_LENGTH_LIMIT))
 )
 
-
+;='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='='=
+;GENERATOR_MAIN_METHOD
 (define (generator-direct-method filename)
   (define (result-phrase ph last-word)
     (if (end? last-word) (reverse2 (cons last-word ph))
         (reverse2 (cons '|.| (cons last-word ph)) )
     )
   )
-
   (begin
     (define graph (read-graph filename))
     (define (loop prev-word res)
       (let ((next-word (take-next-word graph prev-word)))
         (if (phrase-complete? next-word res) (result-phrase res next-word)
             (loop next-word (cons next-word res))
-         )
+        )
       )
     )  
     (loop '|.| '())
   )
 )
+;=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=^=
+(define (get-terminators-from-graph graph)
+  (define (loop terminators res)
+    (if (null? terminators) res
+        (loop (cdr terminators)
+              (if (hash-has-key? graph (char->sym (car terminators)))
+                  (cons (char->sym (car terminators)) res)
+                  res
+              )
+        )
+    )
+  )
+  (loop Terminators '())
+)
+
+(define (take-prev-word graph word)
+  (begin (define prev-words (car (hash-ref graph word)))
+         (define max-weight (apply max (hash-values prev-words)))
+         (if (<= (random 20) 5)
+             (find-word-with-weight prev-words max-weight)
+             (pick-random (hash-keys prev-words))
+         )
+  )
+)
+
+(define (generator-reverse-method filename)
+  (define (result-ph ph last-word)
+    (if (end? last-word) ph
+        (cons last-word ph)
+    )
+  )
+  (begin
+    (define graph (read-graph filename))
+    (define (loop next-word res)
+      (let ((prev-word (take-prev-word graph next-word)))
+        (if (phrase-complete? prev-word res) (result-ph res prev-word)
+            (loop prev-word (cons prev-word res))
+        )
+      )
+    )
+    (define last-word (pick-random (get-terminators-from-graph graph)))
+    (loop  last-word (list last-word))
+  )
+)
 
 ;(define (generator-hybrid-method word)
-;)     
+;)
+
