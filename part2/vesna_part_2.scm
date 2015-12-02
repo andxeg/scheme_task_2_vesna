@@ -265,7 +265,7 @@
 ;if file - output is already exist then -> raise exception
 (define (save-graph graph filename)
   (begin
-    (define out (open-output-file filename))
+    (define out (open-output-file filename #:exists 'truncate))
     (print graph out)
     (close-output-port out)
   )
@@ -281,10 +281,49 @@
   )
 )
 
+;APPEND VALUE TO SIMPLE HASH
+(define (add-value-to-simple-hash key value hash)
+  (if (not (hash-has-key? hash key)) (begin (hash-set! hash key value) hash)
+      (let ((old-value (hash-ref hash key)))
+        (begin (hash-set! hash key (+ value old-value)) hash)
+      )
+  )
+)
+
+;Merge two hash-> {key1:value1, ... keyN:valueN} keys - symbols values - interger number
+(define (merge-hash src dst)
+  (define (loop src src-keys res)
+    (if (null? src-keys) res
+        (let ((key (car src-keys)) (value (hash-ref src (car src-keys))) )
+            (loop (begin (hash-remove! src key) src) (cdr src-keys) (add-value-to-simple-hash key value dst))
+        )
+    )
+  )
+  (loop src (hash-keys src) dst)
+)
+
+;ADD ELEMENT TO HASH
+;[{} {}] -> value
+(define (add-value-to-hash key value hash)
+  (if (not (hash-has-key? hash key)) (begin (hash-set! hash key value) hash)
+      (let ((prev (car (hash-ref hash key))) (next (cadr (hash-ref hash key))))
+        (begin (hash-set! hash key (list (merge-hash (car value) prev) (merge-hash (cadr value) next))) hash)
+      )
+  )
+)
+
 ;MAIN
-;(define (merge-graphs graph1 graph2)
-  
-;)
+;Сливаем graph1 в graph2
+(define (merge-graphs graph1 graph2)
+  (define (loop graph graph-key res)
+    (if (null? graph-key) res
+     (let ((key (car graph-key)) (value (hash-ref graph (car graph-key))))
+      (loop (begin (hash-remove! graph key) graph) (cdr graph-key) (add-value-to-hash key value res))
+     )
+    )
+  )
+  (loop graph1 (hash-keys graph1) graph2)
+)
 
 ;MAIN
 ;Read file - inputfile, create graph and save it into outputfile
@@ -292,6 +331,10 @@
   (save-graph (train-from-file inputfile) outputfile)
 )
 
+;Считываем текст из file1, создаем graph1. Считываем текст из file2, создаем graph2. Сливаем эти графы и результат записываем в file3.
+(define (extend-knowledges file1 file2 file3)
+  (save-graph (merge-graphs (train-from-file file1) (train-from-file file2)) file3)
+)
 
 ;=================================================================================
 (define (pick-random lst)
@@ -313,6 +356,29 @@
     )
   )
   (loop (hash-keys hash))
+)
+
+(define (low-register word)
+  (let ((list-of-char (string->list (symbol->string word))))
+    (string->symbol (list->string (cons (char-downcase (car list-of-char)) (cdr list-of-char))))
+  )
+)
+
+(define (up-register word)
+  (let ((list-of-char (string->list (symbol->string word))))
+    (string->symbol (list->string (cons (char-upcase (car list-of-char)) (cdr list-of-char))))
+  )
+)
+
+;direct generation
+(define (check-register word next-word)
+         (if (end? word)
+             (up-register next-word)
+            (begin
+              (low-register word)
+              (low-register next-word)
+            )
+         )
 )
 
 ;Так как мы начинаем с точки и сами генерируем фразу, следовательно, слово word в графе
@@ -349,7 +415,7 @@
     (define (loop prev-word res)
       (let ((next-word (take-next-word graph prev-word)))
         (if (phrase-complete? next-word res) (result-phrase res next-word)
-            (loop next-word (cons next-word res))
+            (loop next-word (cons (check-register prev-word next-word) res))
         )
       )
     )  
@@ -386,8 +452,11 @@
 ;GENERATOR_REVERSE_METHOD
 (define (generator-reverse-method init-word graph)
   (define (result-ph ph last-word)
-    (if (end? last-word) ph
-        (cons last-word ph)
+    (cond ((not (list? ph)) (cons last-word ph))
+          (else   (if (end? last-word) (cons (up-register (car ph)) (cdr ph))
+                      (cons (up-register last-word) ph) 
+                  )
+          )
     )
   )
   (begin
