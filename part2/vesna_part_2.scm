@@ -452,7 +452,8 @@
 ;GENERATOR_REVERSE_METHOD
 (define (generator-reverse-method init-word graph)
   (define (result-ph ph last-word)
-    (cond ((not (list? ph)) (cons last-word ph))
+    (cond ((null? ph) (cons last-word ph))
+          ((not (list? ph)) (cons last-word ph))
           (else   (if (end? last-word) (cons (up-register (car ph)) (cdr ph))
                       (cons (up-register last-word) ph) 
                   )
